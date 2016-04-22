@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
+import android.media.MediaScannerConnection;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -21,12 +22,10 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class CameraView extends SurfaceView implements SurfaceHolder.Callback, Camera.PictureCallback {
 
-    final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd-HH-mm-ss-SSS");
-    final String ROOT_PATH =
-            Environment.getExternalStorageDirectory() + File.separator + getResources().getString(R.string.app_name) + File.separator;
 
     private Camera mCamera;
     private View mView;
@@ -64,7 +63,8 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, C
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-
+        mCamera.release();
+        mCamera = null;
     }
 
     private Camera.Size getOptimalPreviewSize(List<Camera.Size> sizes, int w, int h) {
@@ -104,31 +104,24 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, C
     public void onPictureTaken(byte[] data, Camera camera) {
         Log.d(null, "take a picture");
 
-        final String path = ROOT_PATH + dateFormat.format(new Date());
-
-        FileOutputStream fos = null;
-
-        try{
-            fos = new FileOutputStream(path);
-        } catch (FileNotFoundException e) {
-            Log.d("cameraview", e.getMessage());
-        }
-
-        if(fos != null){
+        if(data != null){
             try{
-                fos.write(data);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+                camera.stopPreview();
+                SimpleDateFormat format = new SimpleDateFormat("'IMG'_yyyyMMdd_HHmmss'.jpg'", Locale.getDefault());
+                String fileName = format.format(new Date(System.currentTimeMillis()));
 
-            try{
-                fos.close();
-                fos = null;
-            } catch (IOException e) {
+                String path = Environment.getExternalStorageDirectory() + "/" + fileName;
+                saveToSD(data, path);
+
+                //thisかもしれない(インスタンス)
+                MediaScannerConnection.scanFile(getContext(), new String[]{path}, new String[]{"image/jpeg"}, null);
+
+
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-        mCamera.startPreview();
+       camera.startPreview();
     }
 
     @Override
@@ -136,8 +129,24 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, C
         if(event.getAction() == MotionEvent.ACTION_DOWN){
             if(mCamera != null){
                 mCamera.takePicture(null, null, this);//classで実装したので, インスタンスでthis
+                Log.d("TouchEvent", "Touched!!");
             }
         }
         return true;
     }
+
+
+    //save to SD
+    private void saveToSD(byte[] w, String path) throws Exception{
+        FileOutputStream fos = null;
+        try{
+            fos = new FileOutputStream(path);
+            fos.write(w);
+            fos.close();
+        }catch (Exception e){
+            if(fos != null) fos.close();
+            throw e;
+        }
+    }
+
 }

@@ -13,8 +13,6 @@ import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final String IMG_FOLDER_DERECTORY = "/Pictures/fmsuvM/";
-
     private Camera mCamera;
     private CameraView mCameraView;
 
